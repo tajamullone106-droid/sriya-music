@@ -5,13 +5,13 @@ import aiohttp
 from pathlib import Path
 
 from py_yt import Playlist, VideosSearch
-from anony import logger
+from anony import logger, app  # (app 👈 Pyrogram क्लाइंट को इम्पोर्ट किया ताकि Telegram से फ़ास्ट डाउनलोड हो)
 from anony.helpers import Track, utils
 
-# Fast Download API config (Bina Cookies ke download karne ke liye)
-API_URL = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site")
-# @SHRUTIAPIBOT se mili hui API KEY yahan 'YOUR_API_KEY' ki jagah dalein ya fir .env mein SHRUTI_API_KEY laga dein
-API_KEY = os.environ.get("SHRUTI_API_KEY", "ShrutiBotsFxBCNJG7gkajQqdBift3") 
+# --- आपका नया कस्टम Nobita Music API Config ---
+API_URL = "https://nobita-music-api.onrender.com"
+# आपने बॉट से जो API Key बनाई है, उसे यहाँ डालें 👇
+API_KEY = "feccdadd-0dd4-469a-a965-d17f2dafd9df" 
 
 DOWNLOAD_DIR = "downloads"
 
@@ -19,7 +19,7 @@ class YouTube:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
         self.cookies = []
-        self.checked = True  # Cookies bypass karne ke liye True rakha hai
+        self.checked = True 
         self.cookie_dir = "anony/cookies"
         self.warned = False
         self.regex = re.compile(
@@ -29,11 +29,9 @@ class YouTube:
         )
 
     def get_cookies(self):
-        # Ab cookies ki koi zaroorat nahi hai
         return None
 
     async def save_cookies(self, urls: list[str]) -> None:
-        # Agar bot background mein ise call kare toh error na aaye, isliye pass kiya
         pass
 
     async def download(self, video_id: str, video: bool = False) -> str | None:
@@ -44,30 +42,39 @@ class YouTube:
         ext = "mp4" if video else "mp3"
         file_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
 
-        # Agar gaana pehle se download hai, toh wahin se play karega
+        # अगर गाना पहले से सर्वर पर डाउनलोड है, तो तुरंत प्ले करेगा
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return file_path
 
         mode = "video" if video else "audio"
         
         try:
+            # 1. Nobita API से रिक्वेस्ट करना
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"{API_URL}/download",
-                    params={"url": video_id, "type": mode, "api_key": API_KEY},
-                    timeout=aiohttp.ClientTimeout(total=600 if video else 300)
-                ) as resp:
+                api_link = f"{API_URL}/api/play?api_key={API_KEY}&type={mode}&query={video_id}"
+                
+                async with session.get(api_link, timeout=aiohttp.ClientTimeout(total=300)) as resp:
                     if resp.status == 200:
-                        with open(file_path, "wb") as f:
-                            async for chunk in resp.content.iter_chunked(131072):
-                                f.write(chunk)
+                        data = await resp.json()
                         
-                        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-                            return file_path
+                        if data.get("status") == "success":
+                            # API से File ID निकालना
+                            file_id = data["data"]["file_id"]
+                            
+                            # 2. Pyrogram (app) का इस्तेमाल करके Telegram सर्वर से फ़ास्ट डाउनलोड करना
+                            await app.download_media(
+                                message=file_id,
+                                file_name=file_path
+                            )
+                            
+                            if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                                return file_path
+                        else:
+                            logger.error(f"Nobita API Error: {data.get('error')}")
                     else:
-                        logger.error(f"API Error: Status {resp.status}")
+                        logger.error(f"API Http Error: Status {resp.status}")
         except Exception as e:
-            logger.error(f"External API Download Error: {e}")
+            logger.error(f"Nobita API Download Error: {e}")
             if os.path.exists(file_path):
                 try:
                     os.remove(file_path)
