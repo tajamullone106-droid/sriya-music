@@ -82,6 +82,12 @@ class Inline:
                     self._btn("⏹", callback_data=f"controls stop {chat_id}", style=ButtonStyle.DANGER),
                 ]
             )
+            # यहाँ Autoplay का बटन जोड़ दिया गया है जो सीधे प्लगइन से जुड़ा है
+            keyboard.append(
+                [
+                    self._btn("🔁  Autoplay", callback_data=f"toggle_autoplay_{chat_id}", style=ButtonStyle.PRIMARY)
+                ]
+            )
 
         return self.ikm(keyboard)
 
