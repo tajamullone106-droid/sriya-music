@@ -52,17 +52,11 @@ class TgCall(PyTgCalls):
         _lang = await lang.get_lang(chat_id)
 
         if not media.file_path:
-            try:
-                await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-            except:
-                pass
+            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
         if not os.path.exists(media.file_path) or os.path.getsize(media.file_path) < 1024:
-            try:
-                await message.edit_text("❌ Invalid audio file. Skipping...")
-            except:
-                pass
+            await message.edit_text("❌ Invalid audio file. Skipping...")
             return await self.play_next(chat_id)
 
         stream = types.MediaStream(
@@ -95,55 +89,23 @@ class TgCall(PyTgCalls):
                 )
                 keyboard = buttons.controls(chat_id)
                 
-                # Edit the "Downloading..." message to "Now Playing"
-                try:
-                    await message.edit_text(text, reply_markup=keyboard)
-                except:
-                    # If edit fails, delete and send new
-                    try:
-                        await message.delete()
-                    except:
-                        pass
-                    try:
-                        sent = await app.send_message(
-                            chat_id=chat_id,
-                            text=text,
-                            reply_markup=keyboard,
-                        )
-                        media.message_id = sent.id
-                    except:
-                        pass
+                await message.edit_text(text, reply_markup=keyboard)
                 
         except FileNotFoundError:
-            try:
-                await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-            except:
-                pass
+            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             await self.play_next(chat_id)
         except exceptions.NoActiveGroupCall:
             await self.stop(chat_id)
-            try:
-                await message.edit_text(_lang["error_no_call"])
-            except:
-                pass
+            await message.edit_text(_lang["error_no_call"])
         except exceptions.NoAudioSourceFound:
-            try:
-                await message.edit_text(_lang["error_no_audio"])
-            except:
-                pass
+            await message.edit_text(_lang["error_no_audio"])
             await self.play_next(chat_id)
         except (ConnectionError, ConnectionNotFound, TelegramServerError):
             await self.stop(chat_id)
-            try:
-                await message.edit_text(_lang["error_tg_server"])
-            except:
-                pass
+            await message.edit_text(_lang["error_tg_server"])
         except RTMPStreamingUnsupported:
             await self.stop(chat_id)
-            try:
-                await message.edit_text(_lang["error_rtmp"])
-            except:
-                pass
+            await message.edit_text(_lang["error_rtmp"])
         except Exception as e:
             logger.error(f"Play media error: {e}")
 
