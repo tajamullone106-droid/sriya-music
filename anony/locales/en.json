@@ -72,7 +72,7 @@
     "ping_pong": "<emoji id='5343819952023428595'>⚡️</emoji> <u><b>Pong!</b></u>\n\n<b>Latency:</b> <code>{0}ms</code>\n<b>Uptime:</b> {1}\n<b>CPU:</b> <code>{2}%</code>\n<b>RAM:</b> <code>{3}%</code>",
     "play_admin": "<emoji id='6028551194861899805'>🛡</emoji> <u><b>Admin only play</b></u>\n\nOnly admins can play in this chat.",
     "play_banned": "<emoji id='5208429100951159058'>🔴</emoji> <u><b>{0} <emoji id='5258347573097303596'>😽</emoji> assistant is banned</b></u>\n\n<b>ID:</b> <code>{1}</code>",
-    "play_media": "<emoji id='5222472119295684375'>🎶</emoji> <u><b>Started streaming</b></u>\n\n<b><emoji id='5258332798409783582'>🚀</emoji>Title:</b> <a href={0}>{1}</a>\n\n<b><emoji id='5386534612962915793'>🥷</emoji>Duration:</b> {2} min | <b>By:</b> {3}",
+    "play_media": "<emoji id='5222472119295684375'>🎶</emoji> <u><b>Queue #{0}</b></u>\n\n<b><emoji id='5343819952023428595'>⚡️</emoji>Title:</b> <a href={1}>{2}</a>\n<b><emoji id='5258332798409783582'>🚀</emoji>Duration:</b> {3} min\n<b><emoji id='5041792560368977040'>👑</emoji> By:</b> {4}",
     "play_log": "<emoji id='5343819952023428595'>⚡️</emoji> <u>{0} Play Log</u>\n\n<b>Chat:</b> <code>{1}</code> | {2}\n<b>User:</b> <code>{3}</code> | {4}\n<b>Message link:</b> {5}\n\n<b>Title:</b> {6}\n<b>Duration:</b> {7} min",
     "play_queued": "<emoji id='5222472119295684375'>🎶</emoji> <u><b>Queue #{0}</b></u>\n\n<b><emoji id='5343819952023428595'>⚡️</emoji>Title:</b> <a href={1}>{2}</a>\n<b><emoji id='5258332798409783582'>🚀</emoji>Duration:</b> {3} min\n<b><emoji id='5041792560368977040'>👑</emoji> By:</b> {4}",
     "play_usage": "<emoji id='5226654678707622609'>🎀</emoji> <b>Usage:</b> <code>/play [song name]</code>",
