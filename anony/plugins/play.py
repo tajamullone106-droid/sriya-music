@@ -11,15 +11,6 @@ from anony.helpers import buttons, utils
 from anony.helpers._play import checkUB
 
 
-def playlist_to_queue(chat_id: int, tracks: list) -> str:
-    text = "<blockquote expandable>"
-    for track in tracks:
-        pos = queue.add(chat_id, track)
-        text += f"<b>{pos}.</b> {track.title}\n"
-    text = text[:1948] + "</blockquote>"
-    return text
-
-
 class Track:
     """Custom Track class for YouTube videos"""
     def __init__(self):
@@ -33,6 +24,16 @@ class Track:
         self.file_path = None
         self.video = False
         self.user = None
+        self.time = 0
+
+
+def playlist_to_queue(chat_id: int, tracks: list) -> str:
+    text = "<blockquote expandable>"
+    for track in tracks:
+        pos = queue.add(chat_id, track)
+        text += f"<b>{pos}.</b> {track.title}\n"
+    text = text[:1948] + "</blockquote>"
+    return text
 
 
 @app.on_message(
@@ -80,15 +81,18 @@ async def play_hndlr(
                 if not tracks_ids:
                     return await sent.edit_text(m.lang["playlist_error"])
 
-                # Convert playlist IDs to Track objects
                 for vid_id in tracks_ids:
                     track = Track()
                     track.id = vid_id
                     track.url = f"https://youtube.com/watch?v={vid_id}"
                     track.video = video
-                    details = await yt.details(vid_id, videoid=True)
-                    if details:
-                        track.title, track.duration, track.duration_sec, track.thumbnail, _ = details
+                    try:
+                        details = await yt.details(vid_id, videoid=True)
+                        if details:
+                            track.title, track.duration, track.duration_sec, track.thumbnail, _ = details
+                    except:
+                        track.title = "Unknown"
+                        track.duration = "0:00"
                     tracks.append(track)
                 
                 if tracks:
@@ -96,20 +100,20 @@ async def play_hndlr(
                     tracks.remove(file)
                     file.message_id = sent.id
             else:
-                # URL के लिए details() use करें
-                details = await yt.details(url)
-                if details:
-                    title, duration_min, duration_sec, thumbnail, vidid = details
-                    file = Track()
-                    file.id = vidid
-                    file.title = title
-                    file.duration = duration_min
-                    file.duration_sec = duration_sec
-                    file.thumbnail = thumbnail
-                    file.url = url if "youtube" in url else f"https://youtube.com/watch?v={vidid}"
-                    file.message_id = sent.id
-                    file.video = video
-                else:
+                try:
+                    details = await yt.details(url)
+                    if details:
+                        title, duration_min, duration_sec, thumbnail, vidid = details
+                        file = Track()
+                        file.id = vidid
+                        file.title = title
+                        file.duration = duration_min
+                        file.duration_sec = duration_sec
+                        file.thumbnail = thumbnail
+                        file.url = url if "youtube" in url else f"https://youtube.com/watch?v={vidid}"
+                        file.message_id = sent.id
+                        file.video = video
+                except:
                     file = None
 
             if not file:
@@ -120,44 +124,43 @@ async def play_hndlr(
         elif len(m.command) >= 2:
             query = " ".join(m.command[1:])
             
-            # Query search के लिए py_yt का VideosSearch use करें
-            from py_yt import VideosSearch
-            search = VideosSearch(query, limit=1)
-            results = await search.next()
-            
-            if results and results.get("result"):
-                result = results["result"][0]
-                vidid = result["id"]
-                title = result["title"]
-                duration_min = result["duration"]
-                thumbnail = result["thumbnails"][0]["url"].split("?")[0]
-                yt_url = result["link"]
+            try:
+                from py_yt import VideosSearch
+                search = VideosSearch(query, limit=1)
+                results = await search.next()
                 
-                # Duration calculate करें
-                duration_sec = 0
-                if duration_min:
-                    try:
-                        parts = duration_min.split(":")
-                        if len(parts) == 3:
-                            duration_sec = int(parts[0])*3600 + int(parts[1])*60 + int(parts[2])
-                        elif len(parts) == 2:
-                            duration_sec = int(parts[0])*60 + int(parts[1])
-                        else:
-                            duration_sec = int(parts[0])
-                    except:
-                        duration_sec = 0
-                
-                # Track object बनाएं
-                file = Track()
-                file.id = vidid
-                file.title = title
-                file.duration = duration_min
-                file.duration_sec = duration_sec
-                file.thumbnail = thumbnail
-                file.url = yt_url
-                file.message_id = sent.id
-                file.video = video
-            else:
+                if results and results.get("result"):
+                    result = results["result"][0]
+                    vidid = result["id"]
+                    title = result["title"]
+                    duration_min = result["duration"]
+                    yt_url = result["link"]
+                    
+                    duration_sec = 0
+                    if duration_min:
+                        try:
+                            parts = duration_min.split(":")
+                            if len(parts) == 3:
+                                duration_sec = int(parts[0])*3600 + int(parts[1])*60 + int(parts[2])
+                            elif len(parts) == 2:
+                                duration_sec = int(parts[0])*60 + int(parts[1])
+                            else:
+                                duration_sec = int(parts[0])
+                        except:
+                            duration_sec = 0
+                    
+                    file = Track()
+                    file.id = vidid
+                    file.title = title
+                    file.duration = duration_min
+                    file.duration_sec = duration_sec
+                    file.url = yt_url
+                    file.message_id = sent.id
+                    file.video = video
+                else:
+                    file = None
+            except Exception as e:
+                print(f"Search error: {e}")
                 file = None
                 
             if not file:
@@ -203,18 +206,22 @@ async def play_hndlr(
                     )
                 return
 
-        # File path set करें
+        # Download file
         if not file.file_path:
             fname = f"downloads/{file.id}.{'mp4' if video else 'webm'}"
-            if Path(fname).exists():
+            if Path(fname).exists() and Path(fname).stat().st_size > 1024:
                 file.file_path = fname
             else:
                 await sent.edit_text(m.lang["play_downloading"])
-                downloaded_path, success = await yt.download(file.id, sent, video=video)
-                if success and downloaded_path:
-                    file.file_path = downloaded_path
-                else:
-                    return await sent.edit_text("❌ डाउनलोड फेल हो गया।")
+                try:
+                    downloaded_path, success = await yt.download(file.id, sent, video=video)
+                    if success and downloaded_path and Path(downloaded_path).exists() and Path(downloaded_path).stat().st_size > 1024:
+                        file.file_path = downloaded_path
+                    else:
+                        return await sent.edit_text("❌ डाउनलोड फेल। कृपया दोबारा try करें।")
+                except Exception as e:
+                    print(f"Download error: {e}")
+                    return await sent.edit_text("❌ डाउनलोड एरर। कृपया दोबारा try करें।")
 
         await anon.play_media(chat_id=m.chat.id, message=sent, media=file)
         if not tracks:
@@ -226,7 +233,10 @@ async def play_hndlr(
         )
         
     except Exception as e:
-        await sent.edit_text(f"❌ Error: {str(e)[:200]}")
         print(f"Play Error: {e}")
         import traceback
         traceback.print_exc()
+        try:
+            await sent.edit_text(f"❌ Error: {str(e)[:100]}")
+        except:
+            pass
