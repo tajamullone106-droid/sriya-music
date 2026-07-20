@@ -19,6 +19,22 @@ def playlist_to_queue(chat_id: int, tracks: list) -> str:
     text = text[:1948] + "</blockquote>"
     return text
 
+
+class Track:
+    """Custom Track class for YouTube videos"""
+    def __init__(self):
+        self.id = None
+        self.title = None
+        self.duration = None
+        self.duration_sec = 0
+        self.thumbnail = None
+        self.url = None
+        self.message_id = None
+        self.file_path = None
+        self.video = False
+        self.user = None
+
+
 @app.on_message(
     filters.command(["play", "playforce", "vplay", "vplayforce"])
     & filters.group
@@ -57,24 +73,33 @@ async def play_hndlr(
         elif url:
             if "playlist" in url:
                 await sent.edit_text(m.lang["playlist_fetch"])
-                tracks = await yt.playlist(
+                tracks_ids = await yt.playlist(
                     config.PLAYLIST_LIMIT, mention, url, video
                 )
 
-                if not tracks:
+                if not tracks_ids:
                     return await sent.edit_text(m.lang["playlist_error"])
 
-                file = tracks[0]
-                tracks.remove(file)
-                file.message_id = sent.id
+                # Convert playlist IDs to Track objects
+                for vid_id in tracks_ids:
+                    track = Track()
+                    track.id = vid_id
+                    track.url = f"https://youtube.com/watch?v={vid_id}"
+                    track.video = video
+                    details = await yt.details(vid_id, videoid=True)
+                    if details:
+                        track.title, track.duration, track.duration_sec, track.thumbnail, _ = details
+                    tracks.append(track)
+                
+                if tracks:
+                    file = tracks[0]
+                    tracks.remove(file)
+                    file.message_id = sent.id
             else:
                 # URL के लिए details() use करें
                 details = await yt.details(url)
                 if details:
                     title, duration_min, duration_sec, thumbnail, vidid = details
-                    # एक simple object बनाएं
-                    class Track:
-                        pass
                     file = Track()
                     file.id = vidid
                     file.title = title
@@ -83,6 +108,7 @@ async def play_hndlr(
                     file.thumbnail = thumbnail
                     file.url = url if "youtube" in url else f"https://youtube.com/watch?v={vidid}"
                     file.message_id = sent.id
+                    file.video = video
                 else:
                     file = None
 
@@ -121,9 +147,7 @@ async def play_hndlr(
                     except:
                         duration_sec = 0
                 
-                # Object बनाएं
-                class Track:
-                    pass
+                # Track object बनाएं
                 file = Track()
                 file.id = vidid
                 file.title = title
@@ -132,6 +156,7 @@ async def play_hndlr(
                 file.thumbnail = thumbnail
                 file.url = yt_url
                 file.message_id = sent.id
+                file.video = video
             else:
                 file = None
                 
@@ -178,7 +203,8 @@ async def play_hndlr(
                     )
                 return
 
-        if not file.file_path if hasattr(file, 'file_path') else True:
+        # File path set करें
+        if not file.file_path:
             fname = f"downloads/{file.id}.{'mp4' if video else 'webm'}"
             if Path(fname).exists():
                 file.file_path = fname
@@ -202,3 +228,5 @@ async def play_hndlr(
     except Exception as e:
         await sent.edit_text(f"❌ Error: {str(e)[:200]}")
         print(f"Play Error: {e}")
+        import traceback
+        traceback.print_exc()
