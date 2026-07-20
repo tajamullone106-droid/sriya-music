@@ -52,11 +52,17 @@ class TgCall(PyTgCalls):
         _lang = await lang.get_lang(chat_id)
 
         if not media.file_path:
-            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+            try:
+                await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+            except:
+                pass
             return await self.play_next(chat_id)
 
         if not os.path.exists(media.file_path) or os.path.getsize(media.file_path) < 1024:
-            await message.edit_text("❌ Invalid audio file. Skipping...")
+            try:
+                await message.edit_text("❌ Invalid audio file. Skipping...")
+            except:
+                pass
             return await self.play_next(chat_id)
 
         stream = types.MediaStream(
@@ -89,40 +95,57 @@ class TgCall(PyTgCalls):
                 )
                 keyboard = buttons.controls(chat_id)
                 
-                # Delete "Downloading..." message and send fresh one
+                # Edit the "Downloading..." message to "Now Playing"
                 try:
-                    await message.delete()
+                    await message.edit_text(text, reply_markup=keyboard)
                 except:
-                    pass
-                
-                sent = await app.send_message(
-                    chat_id=chat_id,
-                    text=text,
-                    reply_markup=keyboard,
-                )
-                media.message_id = sent.id
+                    # If edit fails, delete and send new
+                    try:
+                        await message.delete()
+                    except:
+                        pass
+                    try:
+                        sent = await app.send_message(
+                            chat_id=chat_id,
+                            text=text,
+                            reply_markup=keyboard,
+                        )
+                        media.message_id = sent.id
+                    except:
+                        pass
                 
         except FileNotFoundError:
-            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+            try:
+                await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+            except:
+                pass
             await self.play_next(chat_id)
         except exceptions.NoActiveGroupCall:
             await self.stop(chat_id)
-            await message.edit_text(_lang["error_no_call"])
+            try:
+                await message.edit_text(_lang["error_no_call"])
+            except:
+                pass
         except exceptions.NoAudioSourceFound:
-            await message.edit_text(_lang["error_no_audio"])
+            try:
+                await message.edit_text(_lang["error_no_audio"])
+            except:
+                pass
             await self.play_next(chat_id)
         except (ConnectionError, ConnectionNotFound, TelegramServerError):
             await self.stop(chat_id)
-            await message.edit_text(_lang["error_tg_server"])
-        except RTMPStreamingUnsupported:
-            await self.stop(chat_id)
-            await message.edit_text(_lang["error_rtmp"])
-        except Exception as e:
-            logger.error(f"Play media error: {e}")
             try:
-                await message.edit_text("❌ गाना play नहीं हो पाया।")
+                await message.edit_text(_lang["error_tg_server"])
             except:
                 pass
+        except RTMPStreamingUnsupported:
+            await self.stop(chat_id)
+            try:
+                await message.edit_text(_lang["error_rtmp"])
+            except:
+                pass
+        except Exception as e:
+            logger.error(f"Play media error: {e}")
 
     async def replay(self, chat_id: int) -> None:
         if not await db.get_call(chat_id):
@@ -157,14 +180,19 @@ class TgCall(PyTgCalls):
         _lang = await lang.get_lang(chat_id)
         msg = await app.send_message(chat_id=chat_id, text=_lang["play_next"])
         if not media.file_path:
-            downloaded_path, success = await yt.download(media.id, video=media.video)
-            if success and downloaded_path and os.path.exists(downloaded_path) and os.path.getsize(downloaded_path) > 1024:
-                media.file_path = downloaded_path
-            else:
+            try:
+                downloaded_path, success = await yt.download(media.id, None, video=media.video)
+                if success and downloaded_path and os.path.exists(downloaded_path) and os.path.getsize(downloaded_path) > 1024:
+                    media.file_path = downloaded_path
+                else:
+                    await self.play_next(chat_id)
+                    return await msg.edit_text(
+                        _lang["error_no_file"].format(config.SUPPORT_CHAT)
+                    )
+            except Exception as e:
+                logger.error(f"Download error in play_next: {e}")
                 await self.play_next(chat_id)
-                return await msg.edit_text(
-                    _lang["error_no_file"].format(config.SUPPORT_CHAT)
-                )
+                return await msg.edit_text("❌ Download failed")
 
         media.message_id = msg.id
         await self.play_media(chat_id, msg, media)
