@@ -2,7 +2,6 @@
 # Licensed under the MIT License.
 # This file is part of AnonXMusic
 
-
 from pathlib import Path
 
 from pyrogram import filters, types
@@ -36,6 +35,14 @@ async def play_hndlr(
     url: str = None,
 ) -> None:
     sent = await m.reply_text(m.lang["play_searching"])
+    
+    # --- नया बदलाव: यूजर का कमांड वाला मैसेज डिलीट करने के लिए ---
+    try:
+        await m.delete()
+    except:
+        pass
+    # -------------------------------------------------------------
+
     file = None
     mention = m.from_user.mention
     media = tg.get_media(m.reply_to_message) if m.reply_to_message else None
