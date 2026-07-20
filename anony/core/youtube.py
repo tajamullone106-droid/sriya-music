@@ -10,7 +10,7 @@ import aiohttp
 
 # --- SHRUTI API CONFIG (FAST & UNLIMITED DOWNLOAD) ---
 API_URL = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site")
-API_KEY = os.environ.get("SHRUTI_API_KEY", "YOUR_API_KEY") ## @SHRUTIAPIBOT से API KEY यहाँ डालें
+API_KEY = os.environ.get("SHRUTI_API_KEY", "ShrutiBotsFxBCNJG7gkajQqdBift3") ## @SHRUTIAPIBOT से API KEY यहाँ डालें
 DOWNLOAD_DIR = "downloads"
 
 
