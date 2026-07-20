@@ -52,7 +52,7 @@ lang = Language()
 from anony.core.telegram import Telegram
 from anony.core.youtube import YouTube
 tg = Telegram()
-yt = YouTube()
+yt = YouTube
 
 from anony.helpers import Queue, Thumbnail
 queue = Queue()
