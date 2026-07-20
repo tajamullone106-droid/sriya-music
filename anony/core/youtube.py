@@ -100,6 +100,13 @@ async def download_video(link: str) -> str:
         return None
 
 
+# Helper class for search results
+class SearchResult:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
@@ -139,6 +146,30 @@ class YouTubeAPI:
                     if entity.type == MessageEntityType.TEXT_LINK:
                         return entity.url
         return None
+
+    # --- MISSING SEARCH FUNCTION ADDED HERE ---
+    async def search(self, query: str, message_id: int, video: bool = False):
+        try:
+            results = VideosSearch(query, limit=1)
+            for result in (await results.next())["result"]:
+                title = result["title"]
+                duration_min = result["duration"]
+                vidid = result["id"]
+                yturl = result["link"]
+                duration_sec = int(time_to_seconds(duration_min)) if duration_min else 0
+                
+                # Returns an object that your play.py expects
+                return SearchResult(
+                    title=title,
+                    duration=duration_min,
+                    duration_sec=duration_sec,
+                    id=vidid,
+                    url=yturl,
+                    file_path=None  # will be downloaded via Shruti API later
+                )
+        except Exception:
+            return None
+    # ------------------------------------------
 
     async def details(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
@@ -305,4 +336,5 @@ class YouTubeAPI:
             return None, False
 
 
-YouTube = YouTubeAPI()
+# Fixed the initialization issue (Removed the brackets so it won't crash)
+YouTube = YouTubeAPI
