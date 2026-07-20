@@ -13,7 +13,6 @@ from anony.helpers._play import checkUB
 
 
 class Track:
-    """Custom Track class for YouTube videos"""
     def __init__(self):
         self.id = None
         self.title = None
@@ -207,22 +206,22 @@ async def play_hndlr(
                     )
                 return
 
-        # Download file
+        # Download for first song
         if not file.file_path:
             fname = f"downloads/{file.id}.{'mp4' if video else 'webm'}"
             if Path(fname).exists() and Path(fname).stat().st_size > 1024:
                 file.file_path = fname
             else:
-                await sent.edit_text("🚀 Downloading...")
+                await sent.edit_text("📥 Downloading...")
                 try:
                     downloaded_path, success = await yt.download(file.id, sent, video=video)
                     if success and downloaded_path and os.path.exists(downloaded_path) and os.path.getsize(downloaded_path) > 1024:
                         file.file_path = downloaded_path
                     else:
-                        return await sent.edit_text("❌ डाउनलोड फेल। कृपया दोबारा try करें।")
+                        return await sent.edit_text("❌ डाउनलोड फेल।")
                 except Exception as e:
                     print(f"Download error: {e}")
-                    return await sent.edit_text("❌ डाउनलोड एरर। कृपया दोबारा try करें।")
+                    return await sent.edit_text("❌ डाउनलोड एरर।")
 
         await anon.play_media(chat_id=m.chat.id, message=sent, media=file)
         if not tracks:
@@ -238,6 +237,6 @@ async def play_hndlr(
         import traceback
         traceback.print_exc()
         try:
-            await sent.edit_text("❌ कोई एरर आ गई। कृपया दोबारा try करें।")
+            await sent.edit_text("❌ कोई एरर आ गई।")
         except:
             pass
