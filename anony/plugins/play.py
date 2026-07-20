@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 # This file is part of AnonXMusic
 
+import os
 from pathlib import Path
 
 from pyrogram import filters, types
@@ -212,10 +213,10 @@ async def play_hndlr(
             if Path(fname).exists() and Path(fname).stat().st_size > 1024:
                 file.file_path = fname
             else:
-                await sent.edit_text(m.lang["play_downloading"])
+                await sent.edit_text("🚀 Downloading...")
                 try:
                     downloaded_path, success = await yt.download(file.id, sent, video=video)
-                    if success and downloaded_path and Path(downloaded_path).exists() and Path(downloaded_path).stat().st_size > 1024:
+                    if success and downloaded_path and os.path.exists(downloaded_path) and os.path.getsize(downloaded_path) > 1024:
                         file.file_path = downloaded_path
                     else:
                         return await sent.edit_text("❌ डाउनलोड फेल। कृपया दोबारा try करें।")
@@ -237,6 +238,6 @@ async def play_hndlr(
         import traceback
         traceback.print_exc()
         try:
-            await sent.edit_text(f"❌ Error: {str(e)[:100]}")
+            await sent.edit_text("❌ कोई एरर आ गई। कृपया दोबारा try करें।")
         except:
             pass
