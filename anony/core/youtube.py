@@ -8,9 +8,10 @@ from pyrogram.types import Message
 from py_yt import VideosSearch, Playlist
 import aiohttp
 
-# --- SHRUTI API CONFIG (FAST & UNLIMITED DOWNLOAD) ---
 API_URL = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site")
-API_KEY = os.environ.get("SHRUTI_API_KEY", "ShrutiBotsFxBCNJG7gkajQqdBift3") ## @SHRUTIAPIBOT से API KEY यहाँ डालें
+
+API_KEY = os.environ.get("SHRUTI_API_KEY", "ShrutiBotsFxBCNJG7gkajQqdBift3") ## Get This API KEY FROM TELEGRAM BOT USERNAME: @SHRUTIAPIBOT 
+
 DOWNLOAD_DIR = "downloads"
 
 
@@ -19,21 +20,13 @@ def time_to_seconds(time):
     return sum(int(x) * 60 ** i for i, x in enumerate(reversed(stringt.split(":"))))
 
 
-def get_video_id(link: str) -> str:
-    match = re.search(r"(?:v=|youtu\.be/|shorts/)([0-9A-Za-z_-]{11})", link)
-    if match:
-        return match.group(1)
-    return link.split("v=")[-1].split("&")[0] if "v=" in link else link
-
-
 async def download_song(link: str) -> str:
-    video_id = get_video_id(link)
-    if not video_id or len(video_id) < 11:
+    video_id = link.split("v=")[-1].split("&")[0] if "v=" in link else link
+    if not video_id or len(video_id) < 3:
         return None
 
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
     file_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp3")
-    
     if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
         return file_path
 
@@ -42,14 +35,13 @@ async def download_song(link: str) -> str:
             async with session.get(
                 f"{API_URL}/download",
                 params={"url": video_id, "type": "audio", "api_key": API_KEY},
-                timeout=None
+                timeout=aiohttp.ClientTimeout(total=300)
             ) as resp:
                 if resp.status != 200:
                     return None
                 with open(file_path, "wb") as f:
                     async for chunk in resp.content.iter_chunked(131072):
                         f.write(chunk)
-                        
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return file_path
         return None
@@ -63,13 +55,12 @@ async def download_song(link: str) -> str:
 
 
 async def download_video(link: str) -> str:
-    video_id = get_video_id(link)
-    if not video_id or len(video_id) < 11:
+    video_id = link.split("v=")[-1].split("&")[0] if "v=" in link else link
+    if not video_id or len(video_id) < 3:
         return None
 
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
     file_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp4")
-    
     if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
         return file_path
 
@@ -78,14 +69,13 @@ async def download_video(link: str) -> str:
             async with session.get(
                 f"{API_URL}/download",
                 params={"url": video_id, "type": "video", "api_key": API_KEY},
-                timeout=None
+                timeout=aiohttp.ClientTimeout(total=600)
             ) as resp:
                 if resp.status != 200:
                     return None
                 with open(file_path, "wb") as f:
                     async for chunk in resp.content.iter_chunked(131072):
                         f.write(chunk)
-                        
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return file_path
         return None
@@ -98,13 +88,6 @@ async def download_video(link: str) -> str:
         return None
 
 
-# Helper class for search results
-class SearchResult:
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
@@ -112,17 +95,6 @@ class YouTubeAPI:
         self.status = "https://www.youtube.com/oembed?url="
         self.listbase = "https://youtube.com/playlist?list="
         self.reg = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-        
-        self.cookies = []
-        self.checked = True 
-        self.cookie_dir = "cookies"
-        self.warned = False
-
-    def get_cookies(self):
-        return None
-
-    async def save_cookies(self, urls: list) -> None:
-        pass
 
     async def exists(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
@@ -144,27 +116,6 @@ class YouTubeAPI:
                     if entity.type == MessageEntityType.TEXT_LINK:
                         return entity.url
         return None
-
-    async def search(self, query: str, message_id: int, video: bool = False):
-        try:
-            results = VideosSearch(query, limit=1)
-            for result in (await results.next())["result"]:
-                title = result["title"]
-                duration_min = result["duration"]
-                vidid = result["id"]
-                yturl = result["link"]
-                duration_sec = int(time_to_seconds(duration_min)) if duration_min else 0
-                
-                return SearchResult(
-                    title=title,
-                    duration=duration_min,
-                    duration_sec=duration_sec,
-                    id=vidid,
-                    url=yturl,
-                    file_path=None 
-                )
-        except Exception:
-            return None
 
     async def details(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
@@ -266,12 +217,7 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        
-        ytdl_opts = {
-            "quiet": True, 
-            "cookiefile": None,
-            "nocheckcertificate": True
-        }
+        ytdl_opts = {"quiet": True}
         ydl = yt_dlp.YoutubeDL(ytdl_opts)
         with ydl:
             formats_available = []
@@ -309,14 +255,14 @@ class YouTubeAPI:
     async def download(
         self,
         link: str,
-        mystic=None,
+        mystic,
         video: Union[bool, str] = None,
         videoid: Union[bool, str] = None,
         songaudio: Union[bool, str] = None,
         songvideo: Union[bool, str] = None,
         format_id: Union[bool, str] = None,
         title: Union[bool, str] = None,
-    ):
+    ) -> str:
         if videoid:
             link = self.base + link
         try:
@@ -330,4 +276,5 @@ class YouTubeAPI:
         except Exception:
             return None, False
 
-YouTube = YouTubeAPI
+
+YouTube = YouTubeAPI()
