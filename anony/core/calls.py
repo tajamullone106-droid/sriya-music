@@ -55,9 +55,8 @@ class TgCall(PyTgCalls):
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
-        # Check if file exists and is valid
         if not os.path.exists(media.file_path) or os.path.getsize(media.file_path) < 1024:
-            await message.edit_text("❌ Invalid audio file. Trying next song...")
+            await message.edit_text("❌ Invalid audio file. Skipping...")
             return await self.play_next(chat_id)
 
         stream = types.MediaStream(
@@ -81,6 +80,7 @@ class TgCall(PyTgCalls):
             if not seek_time:
                 media.time = 1
                 await db.add_call(chat_id)
+                
                 text = _lang["play_media"].format(
                     media.url,
                     media.title,
@@ -89,20 +89,19 @@ class TgCall(PyTgCalls):
                 )
                 keyboard = buttons.controls(chat_id)
                 
-                # Simple edit_text - no thumbnail to avoid DOCUMENT_INVALID error
+                # Delete "Downloading..." message and send fresh one
                 try:
-                    await message.edit_text(text, reply_markup=keyboard)
-                except (MessageIdInvalid, Exception):
-                    try:
-                        sent = await app.send_message(
-                            chat_id=chat_id,
-                            text=text,
-                            reply_markup=keyboard,
-                        )
-                        media.message_id = sent.id
-                    except Exception:
-                        pass
-                        
+                    await message.delete()
+                except:
+                    pass
+                
+                sent = await app.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    reply_markup=keyboard,
+                )
+                media.message_id = sent.id
+                
         except FileNotFoundError:
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             await self.play_next(chat_id)
@@ -121,7 +120,7 @@ class TgCall(PyTgCalls):
         except Exception as e:
             logger.error(f"Play media error: {e}")
             try:
-                await message.edit_text("❌ गाना play नहीं हो पाया। कृपया दोबारा try करें।")
+                await message.edit_text("❌ गाना play नहीं हो पाया।")
             except:
                 pass
 
